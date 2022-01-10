@@ -1,0 +1,185 @@
+---
+title: "Prasenjeet_Rathore_110092_Data_Mining"
+author: "Prasenjeet Rathore"
+date: "5/30/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Setting up working directory for the project
+
+```{r}
+getwd()
+setwd("/Users/college/Desktop/Semester_2/Data_mining/Project")
+```
+
+Installing all required packages
+
+```{r}
+install.packages("randomForest")
+devtools::install_github('araastat/reprtree')
+install.packages("rpart")
+install.packages("rpart.plot")
+install.packages("psych")
+install.packages("AppliedPredictiveModeling")
+```
+
+Reading file and checking number of observations in the dataset
+
+```{r}
+df <- read.csv("mushrooms.csv", header = TRUE)
+print(sprintf("Number of data rows: %d",nrow(df)))
+```
+
+
+checking balance of the target varirable, structure of dataset, checking for missing values in the dataset, changing character class of variables to factors
+
+```{r}
+table(df$class)
+
+str(df)
+
+df_1 <- df
+
+missing_values<- as.data.frame(table(is.na(df_1)))
+
+library(dplyr)
+
+df_1 <- df_1 %>%
+        mutate_if(is.character,as.factor)
+```
+
+
+Setting seed for data sampling
+
+```{r}
+set.seed(9850)
+
+partition = sample(nrow(df_1), nrow(df_1)*.7)
+```
+
+plotting frequencies of variables
+
+```{r}
+library(caret)
+var_cols = df_1[,2:23]
+var_class = df_1[,1]
+var_cols <- sapply( var_cols, function (x) as.numeric(as.factor(x)))
+
+scales <- list(x=list(relation="free"),y=list(relation="free"), cex=0.6)
+
+##########################################################################
+# cex is number indicating the amount by which plotting text and symbols # 
+# should be scaled relative to the default. 1=default, 1.5 is 50% larger,# 
+# 0.5 is 50% smaller, etc.                                               #
+##########################################################################
+
+
+featurePlot(x=var_cols, y=var_class, plot="density",scales=scales,
+            layout = c(5,5), auto.key = list(columns = 2), pch = "|")
+```
+
+
+splitting dataset for training and testing
+
+```{r}
+
+df_train<-df_1[partition,]
+df_test<-df_1[-partition,]
+
+```
+
+ 
+ 
+Model 1 - Decision Tree
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+model_dT_train <- rpart(class ~ ., data=df_train, method="class")
+
+
+model_dT_train
+
+```
+
+Plotting Decision Tree
+
+```{r}
+rpart.plot(model_dT_train)
+
+```
+
+Checking Accuracy of the decision tree model 
+
+```{r}
+
+t_pred1 = predict(model_dT_train,df_test,type="class")
+
+confMat <- table(df_test$class,t_pred)
+confMat
+
+accuracy <- sum(diag(confMat))/sum(confMat)
+
+accuracy
+
+```
+
+
+
+Model 2 - Random Forest 
+
+```{r}
+library(randomForest)
+```
+
+
+Running model
+```{r}
+model_rF_1 = randomForest(class ~., ntree = 20, data = df_train)
+```
+
+
+Plotting randomForest
+
+```{r}
+library(reprtree)
+reprtree:::plot.getTree(model_rF_1)
+
+#variable importance plot for all variables
+varImpPlot(model_rF_1, main ="Variable Importance", scale = TRUE)
+
+#variable importance plot for top 5 variables
+varImpPlot(model_rF_1, main ="Variable Importance", n.var=min(5, nrow(model_rF_1$importance)), bg=3)
+```
+
+
+Storing model output in dataframe
+
+```{r}
+variable_importance_train <- as.data.frame(model_rF_1$importance)
+```
+
+Checking accuracy of the model
+
+```{r}
+#confusion matrix
+
+
+t_pred1 = predict(model_rF_1,df_test,type="class")
+
+confMat1 <- table(df_test$class,t_pred1)
+confMat1
+
+accuracy <- sum(diag(confMat1))/sum(confMat1)
+
+accuracy
+
+```
+
+
+
